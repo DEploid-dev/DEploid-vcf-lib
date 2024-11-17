@@ -35,12 +35,11 @@ vcf_prof_LDADD = $(common_LDADD)
 
 unit_tests_SOURCES = $(common_src) \
 					 tests/unittest/test_runner.cpp \
-					 tests/unittest/test_standardizeVector.cpp \
-					 tests/unittest/test_DEploidvcf.cpp \
+					 tests/unittest/test_vcfReader.cpp \
 					 tests/unittest/test_txtReader.cpp
 
 unit_tests_CXXFLAGS = $(common_flags) -DNDEBUG -DUNITTEST -Wno-write-strings --coverage
-unit_tests_LDADD    = -lcppunit -ldl
+unit_tests_LDADD    = -lcppunit -ldl $(common_LDADD)
 
 clean-local: clean-local-check
 .PHONY: clean-local-check utilities
