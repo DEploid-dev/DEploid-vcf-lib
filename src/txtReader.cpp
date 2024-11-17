@@ -217,13 +217,13 @@ void TxtReader::reshapeContentToInfo() {
 
 
 void TxtReader::removeMarkers() {
-    assert(this->keptContent_.size() == (size_t)0);
+    assert(this->keptContent_.size() == static_cast<size_t>(0));
     for (auto const &value : this->indexOfContentToBeKept) {
         this->keptContent_.push_back(this->content_[value]);
     }
 
     this->content_.clear();
-    assert(this->content_.size() == (size_t)0);
+    assert(this->content_.size() == static_cast<size_t>(0));
     this->content_ = this->keptContent_;
     this->keptContent_.clear();
 

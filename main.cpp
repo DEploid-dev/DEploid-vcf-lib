@@ -29,7 +29,7 @@
 
 int main(int argc, char *argv[]) {
     try {
-        VcfReader vcfReader(argv[1], "PG0390-C");
+     VcfReader vcfReader(argv[1], "PG0390-C");
 //        vcfReader.printSampleName();
         return EXIT_SUCCESS;
     }

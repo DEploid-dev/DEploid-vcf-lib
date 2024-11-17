@@ -1,0 +1,13 @@
+src/exceptions.hpp
+src/global.hpp
+src/txtReader.cpp
+src/txtReader.hpp
+src/variantIndex.cpp
+src/variantIndex.hpp
+src/vcfDBG.cpp
+src/vcfReader.cpp
+src/vcfReader.hpp
+src/vcfReaderDebug.cpp
+tests/unittest/test_runner.cpp
+tests/unittest/test_txtReader.cpp
+tests/unittest/test_vcfReader.cpp

@@ -1,0 +1,132 @@
+name: Build and test
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+    - "*"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        name: [ubuntu-gcc-9,
+               ubuntu-gcc-10,
+               ubuntu-clang-15
+               ]
+
+        include:
+          - name: ubuntu-gcc-9
+            os: ubuntu-latest
+            compiler: gcc
+            version: "9"
+
+          - name: ubuntu-gcc-10
+            os: ubuntu-latest
+            compiler: gcc
+            version: "10"
+
+          - name: ubuntu-clang-15
+            os: ubuntu-latest
+            compiler: clang
+            version: "15"
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v3
+      with:
+        python-version: 3.8
+
+    - name: Install dependencies (linux)
+      if: runner.os == 'Linux' && matrix.name != 'windows'
+      run: |
+        sudo apt-get install libcppunit-dev valgrind r-base-core lcov doxygen graphviz ccache
+        if [ "${{ matrix.compiler }}" = "gcc" ]; then
+          sudo apt-get install -y g++-${{ matrix.version }}
+          echo "CC=ccache gcc-${{ matrix.version }}" >> $GITHUB_ENV
+          echo "CXX=ccache g++-${{ matrix.version }}" >> $GITHUB_ENV
+        else
+          sudo apt-get install -y clang-${{ matrix.version }}
+          echo "CC=ccache clang-${{ matrix.version }}" >> $GITHUB_ENV
+          echo "CXX=ccache clang++-${{ matrix.version }}" >> $GITHUB_ENV
+        fi
+
+    - name: Install dependencies (macOS)
+      if: runner.os == 'macOS'
+      run: |
+          brew install cppunit r lcov doxygen graphviz ccache coreutils automake
+          echo "DEVELOPER_DIR=/Applications/Xcode_${{ matrix.version }}.app/Contents/Developer" >> $GITHUB_ENV
+          echo "CC=ccache clang" >> $GITHUB_ENV
+          echo "CXX=ccache clang++" >> $GITHUB_ENV
+          ccache --set-config=cache_dir=$HOME/.ccache
+
+    - name: Install python packages
+      run: python3 -mpip install cpp-coveralls cpplint
+
+    - name: Check style
+      run: cpplint --version # .ci/style.sh
+
+    - name: Prepare ccache timestamp
+      id: ccache_cache_timestamp
+      run: |
+        if [ "$RUNNER_OS" = "Linux" ]; then
+          stamp=$(date '+%s')
+        else
+          stamp=$(gdate '+%s')
+        fi
+        echo "${stamp}"
+        echo "::set-output name=timestamp::${stamp}"
+
+    - name: ccache cache files
+      uses: actions/cache@v2
+      with:
+         path: ~/.ccache
+         key: ${{ matrix.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+         restore-keys: |
+           ${{ matrix.name }}-ccache-
+
+    - name: configure
+      run: ./bootstrap
+
+    - name: make
+      run: make -j2
+
+    - name: make check
+      run: make -j2 check
+
+    - name: make install
+      run: sudo make install
+
+    - name: test
+      run: |
+         # Mac OS does not have valgrind!
+         if [ "$RUNNER_OS" == Linux ]; then echo ::group::binary ; ./tests/test_binary.sh; fi
+         echo ::group::POS
+         ./tests/testPOS.sh
+         echo ::group::binaryVcf
+         ./tests/test_binaryVcfVsTxt.sh
+         echo ::group::test-against-previous-version
+         ./tests/test-against-previous-version.sh
+         echo ::group::binary reproducible
+         ./tests/test_binaryReproducible.sh
+
+    - name: docs
+      run:  if [ $TRAVIS_OS_NAME == linux ]; then cd docs/doxygen; doxygen Doxyfile;  fi
+
+    - name: run coverage
+      if: matrix.name == 'ubuntu-gcc-9'
+      run: |
+         tests/test-coverage-coverall.sh
+
+#  See: https://github.com/marketplace/actions/coveralls-github-action
+    - name: Coveralls
+      if: matrix.name == 'ubuntu-gcc-9'
+      uses: coverallsapp/github-action@v1.1.2
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+      #run: coveralls --exclude lib --exclude tests --exclude src/random --exclude src/codeCogs/ --exclude src/export/ --exclude src/gzstream/ --gcov-options '\-lp'
