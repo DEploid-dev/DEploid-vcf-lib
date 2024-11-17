@@ -1,0 +1,271 @@
+/*
+ * dEploid is used for deconvoluting Plasmodium falciparum genome from
+ * mix-infected patient sample.
+ *
+ * Copyright (C) 2016-2017 University of Oxford
+ *
+ * Author: Sha (Joe) Zhu
+ *
+ * This file is part of dEploid.
+ *
+ * dEploid is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+
+#include <string>  /* string */
+#include <exception>
+
+#ifndef EXCEPTION
+#define EXCEPTION
+
+// using namespace std;
+using std::string;
+using std::ifstream;
+using std::stoi;
+using std::exception;
+
+namespace vcf {
+struct InvalidInput : std::exception {
+    string throwMsg;
+
+    InvalidInput() {
+    }
+
+    explicit InvalidInput(string str) {
+        this->throwMsg      = "\033[1;31m" + str + "\033[0m";
+    }
+    virtual ~InvalidInput() throw() {}
+    virtual const char* what() const noexcept {
+        return throwMsg.c_str();
+    }
+};
+}  // namespace vcf
+
+struct ShouldNotBeCalled : std::exception{
+  ShouldNotBeCalled() { }
+  virtual ~ShouldNotBeCalled() throw() {}
+  virtual const char* what() const noexcept {
+      static const std::string msg = "Should not reach here";
+      return msg.c_str();
+  }
+};
+
+
+struct VirtualFunctionShouldNotBeCalled : public ShouldNotBeCalled{
+  VirtualFunctionShouldNotBeCalled():ShouldNotBeCalled() {}
+  ~VirtualFunctionShouldNotBeCalled() throw() {}
+};
+
+
+struct InvalidInput : std::exception {
+  string src;
+  string reason;
+  string throwMsg;
+
+  InvalidInput() {
+    this->src      = "";
+    this->reason   = "";
+  }
+
+  explicit InvalidInput(string str) {
+    this->src      = "\033[1;31m" + str + "\033[0m";
+    this->reason   = "";
+  }
+  virtual ~InvalidInput() throw() {}
+  virtual const char* what() const noexcept {
+      return throwMsg.c_str();
+  }
+};
+
+
+struct OutOfVectorSize : std::exception{
+  OutOfVectorSize() { }
+  virtual ~OutOfVectorSize() throw() {}
+  virtual const char* what() const noexcept {
+    static const std::string msg = "Out of vector size!";
+      return msg.c_str();
+  }
+};
+
+
+struct InvalidK : public InvalidInput{
+  InvalidK():InvalidInput() {
+    this->reason = "k must be at least 2, when using the flag -ibd.";
+    throwMsg = this->reason + this->src;
+  }
+  ~InvalidK() throw() {}
+};
+
+
+struct PositionUnsorted : public InvalidInput{
+  explicit PositionUnsorted(string str):InvalidInput(str) {
+    this->reason = "Position (POS) not sorted in ";
+    throwMsg = this->reason + this->src;
+  }
+  ~PositionUnsorted() throw() {}
+};
+
+
+struct NotEnoughArg : public InvalidInput{
+  explicit NotEnoughArg(string str):InvalidInput(str) {
+    this->reason = "Not enough parameters when parsing option: ";
+    throwMsg = this->reason + this->src;
+  }
+  ~NotEnoughArg() throw() {}
+};
+
+
+struct VcfOutUnSpecified : public InvalidInput{
+  explicit VcfOutUnSpecified(string str):InvalidInput(str) {
+    this->reason = "Missing flag \"-vcfOut\".";
+    throwMsg = this->reason + this->src;
+  }
+  ~VcfOutUnSpecified() throw() {}
+};
+
+
+struct WrongType : public InvalidInput{
+  explicit WrongType(string str):InvalidInput(str) {
+    this->reason = "Wrong type for parsing: ";
+    throwMsg = this->reason + this->src;
+  }
+  ~WrongType() throw() {}
+};
+
+
+struct InvalidSampleInVcf : public InvalidInput{
+  explicit InvalidSampleInVcf(string sample, string vcf):InvalidInput(sample) {
+    this->reason = "Invalid sample name: ";
+    throwMsg = this->reason + this->src + " in " + vcf;
+  }
+  ~InvalidSampleInVcf() throw() {}
+};
+
+
+struct BadScientificNotation : public InvalidInput{
+  explicit BadScientificNotation(string str1, string str2):InvalidInput(str1) {
+    this->reason = "Bad scientific notation: ";
+    throwMsg = this->reason + this->src +
+      ", int expected. Check input file" + str2;
+  }
+  ~BadScientificNotation() throw() {}
+};
+
+
+struct BadConversion : public InvalidInput{
+  explicit BadConversion(string str1, string str2):InvalidInput(str1) {
+    this->reason = "Bad conversion: ";
+    throwMsg = this->reason + this->src +
+      ", int expected. Check input file" + str2;
+  }
+  ~BadConversion() throw() {}
+};
+
+
+struct InvalidInputFile : public InvalidInput{
+  explicit InvalidInputFile(string str):InvalidInput(str) {
+    this->reason = "Invalid input file: ";
+    throwMsg = this->reason + this->src;
+  }
+  ~InvalidInputFile() throw() {}
+};
+
+
+struct FileNameMissing : public InvalidInput{
+  explicit FileNameMissing(string str):InvalidInput(str) {
+    this->reason = " file path missing!";
+    throwMsg = this->src + this->reason;
+  }
+  ~FileNameMissing() throw() {}
+};
+
+
+struct UnknowArg : public InvalidInput{
+  explicit UnknowArg(string str):InvalidInput(str) {
+    this->reason = "Unknow option: ";
+    throwMsg = this->reason + this->src;
+  }
+  ~UnknowArg() throw() {}
+};
+
+
+struct FlagsConflict : public InvalidInput{
+  explicit FlagsConflict(string str1, string str2):InvalidInput(str1) {
+    this->reason = "Flag: ";
+    throwMsg = this->reason + this->src + string(" conflict with flag ") + str2;
+  }
+  ~FlagsConflict() throw() {}
+};
+
+
+struct FlagsOrderIncorrect : public InvalidInput{
+  // -plafFromVcf after -vcf
+  // -sample after -vcf
+  explicit FlagsOrderIncorrect(string str1, string str2):InvalidInput(str1) {
+    this->reason = "Flag: ";
+    throwMsg = this->reason + this->src +
+      string(" should be used after flag ") + str2;
+  }
+  ~FlagsOrderIncorrect() throw() {}
+};
+
+
+struct OutOfRange : public InvalidInput{
+  explicit OutOfRange(string str1, string str2):InvalidInput(str1) {
+    this->reason = "Flag \"";
+    throwMsg = this->reason + this->src + string(" ") +
+      str2 + string("\" out of range [0, 1].");
+  }
+  ~OutOfRange() throw() {}
+};
+
+
+struct LociNumberUnequal : public InvalidInput{
+  explicit LociNumberUnequal(string str):InvalidInput(str) {
+    this->reason = "Number of sites was wrong (compared to ref count) in: ";
+    throwMsg = this->reason + this->src;
+  }
+  ~LociNumberUnequal() throw() {}
+};
+
+
+struct SumOfPropNotOne : public InvalidInput{
+  explicit SumOfPropNotOne(string str):InvalidInput(str) {
+    this->reason = "Sum of initial proportion is not equal to 1, but equals ";
+    throwMsg = this->reason + this->src;
+  }
+  ~SumOfPropNotOne() throw() {}
+};
+
+
+struct NumOfPropNotMatchNumStrain : public InvalidInput{
+  explicit NumOfPropNotMatchNumStrain(string str):InvalidInput(str) {
+    this->reason =
+      "Number of initial proportion do not match number of strains!";
+    throwMsg = this->reason + this->src;
+  }
+  ~NumOfPropNotMatchNumStrain() throw() {}
+};
+
+
+struct InitialPropUngiven : public InvalidInput{
+  explicit InitialPropUngiven(string str):InvalidInput(str) {
+    this->reason = "Initial proportion was not specified.";
+    throwMsg = this->reason + this->src;
+  }
+  ~InitialPropUngiven() throw() {}
+};
+
+#endif
