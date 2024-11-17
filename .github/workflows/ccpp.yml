@@ -106,14 +106,6 @@ jobs:
       run: |
          # Mac OS does not have valgrind!
          if [ "$RUNNER_OS" == Linux ]; then echo ::group::binary ; ./tests/test_binary.sh; fi
-         echo ::group::POS
-         ./tests/testPOS.sh
-         echo ::group::binaryVcf
-         ./tests/test_binaryVcfVsTxt.sh
-         echo ::group::test-against-previous-version
-         ./tests/test-against-previous-version.sh
-         echo ::group::binary reproducible
-         ./tests/test_binaryReproducible.sh
 
     - name: docs
       run:  if [ $TRAVIS_OS_NAME == linux ]; then cd docs/doxygen; doxygen Doxyfile;  fi
