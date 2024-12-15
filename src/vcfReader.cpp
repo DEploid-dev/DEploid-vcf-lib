@@ -458,10 +458,10 @@ void VariantLine::extract_field_VARIANT() {
                 alt = maybe_dot_to_integer(alt_AD);
                 break;
             }
-            catch (std::exception& e) {
-                std::cerr << "Error parsing vcf AD field: '"
-                          << adStr << "':  " << e.what() << "\n";
-                exit(1);
+            catch (const std::exception& e) {
+              throw std::runtime_error(
+                  "Error parsing vcf AD field: '" +
+                    adStr + "':  " + e.what() + "\n");
             }
         }
         feild_start = field_end+1;
